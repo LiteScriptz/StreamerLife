@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreamerLife // creator simulator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root {
+      --ink: #f6f3ee;
+      --muted: #a9a9ad;
+      --subtle: #68686d;
+      --bg: #0a0a0b;
+      --panel: #151516;
+      --panel-hi: #1e1e20;
+      --line: #353538;
+      --lime: #ff3344;
+      --coral: #ff3344;
+      --cyan: #f4f4f2;
+      --gold: #ff8a8f;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Space Grotesk', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--bg); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; }
+    body:before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .35; background: radial-gradient(circle at 75% 10%, rgba(255,51,68,.1), transparent 31%), radial-gradient(circle at 10% 100%, rgba(255,255,255,.035), transparent 34%); }
+    button { font: inherit; color: inherit; }
+    .app { width: min(1480px, 100%); margin: auto; padding: 24px 28px 40px; position: relative; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 18px; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; letter-spacing: -.04em; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--lime); color: var(--lime); font-weight: 700; transform: rotate(-8deg); font-size: 18px; }
+    .brand strong { font-size: 19px; letter-spacing: -.06em; }
+    .brand span { color: var(--muted); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; margin-left: 5px; }
+    .wallet { display: flex; align-items: center; gap: 20px; font: 12px var(--mono); color: var(--muted); }
+    .wallet b { color: var(--gold); font-size: 15px; }
+    .wallet-item { display: flex; align-items: center; gap: 7px; }
+    .tiny-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); display: inline-block; box-shadow: 0 0 12px var(--coral); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(310px, .85fr); gap: 24px; margin-top: 24px; }
+    .stage { min-width: 0; }
+    .eyebrow { color: var(--lime); font: 11px var(--mono); letter-spacing: .11em; text-transform: uppercase; }
+    h1 { font-size: clamp(30px, 4vw, 58px); line-height: .96; max-width: 730px; letter-spacing: -.07em; margin: 10px 0 13px; font-weight: 600; }
+    .lead { color: var(--muted); max-width: 630px; margin: 0 0 22px; font-size: 15px; line-height: 1.5; }
+    .stream-frame { position: relative; background: #101216; border: 1px solid var(--line); aspect-ratio: 16 / 9; min-height: 350px; overflow: hidden; }
+    .stream-frame:before { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,51,68,.1), transparent 30%, rgba(255,255,255,.035) 85%), repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.012) 4px); pointer-events: none; }
+    .stream-grid { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px); background-size: 46px 46px; }
+    .stream-content { position: absolute; inset: 12% 8% 18%; display: grid; place-items: center; text-align: center; }
+    .stream-content.chat-mode { align-content: center; gap: 12px; }
+    .stream-content h2 { margin: 0; font-size: clamp(22px, 4vw, 48px); letter-spacing: -.08em; }
+    .stream-content p { margin: 0; color: var(--muted); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .game-screen { position: relative; width: min(70%, 510px); aspect-ratio: 16 / 9; border: 1px solid rgba(255,51,68,.45); background: #09090a; overflow: hidden; display: grid; place-items: center; }
+    .game-screen:before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255,255,255,.025) 6px), linear-gradient(135deg, rgba(255,51,68,.18), transparent 55%); }
+    .game-screen strong { position: relative; color: #fff; font-size: clamp(18px, 3vw, 34px); letter-spacing: -.07em; }
+    .game-screen span { position: absolute; left: 12px; bottom: 10px; color: var(--coral); font: 9px var(--mono); }
+    .alert-overlay { position: absolute; z-index: 4; left: 50%; top: 22%; transform: translate(-50%, -12px); opacity: 0; pointer-events: none; min-width: 220px; border: 1px solid var(--coral); background: rgba(10,10,11,.94); padding: 14px 18px; text-align: center; box-shadow: 0 0 38px rgba(255,51,68,.26); transition: opacity .2s, transform .2s; }
+    .alert-overlay.show { opacity: 1; transform: translate(-50%, 0); }
+    .alert-overlay b { display: block; color: var(--coral); font: 10px var(--mono); letter-spacing: .1em; }
+    .alert-overlay span { display: block; margin-top: 5px; font-size: 15px; }
+    .stream-art { position: absolute; inset: 12% 19%; display: grid; place-items: center; }
+    .art-orbit { width: min(280px, 48%); aspect-ratio: 1; border: 1px solid rgba(255,51,68,.35); border-radius: 50%; position: relative; transform: rotate(23deg); box-shadow: 0 0 90px rgba(255,51,68,.1); }
+    .art-orbit:before, .art-orbit:after { content: ''; position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,.27); inset: 15%; }
+    .art-orbit:after { inset: 35%; border-color: rgba(255,51,68,.7); background: rgba(255,51,68,.1); box-shadow: 0 0 40px rgba(255,51,68,.2); }
+    .art-caption { position: absolute; bottom: 16%; left: 7%; font: 10px var(--mono); color: var(--subtle); letter-spacing: .15em; text-transform: uppercase; }
+    .live-pill { position: absolute; top: 18px; left: 18px; display: inline-flex; align-items: center; gap: 7px; background: var(--coral); color: #180b08; font: 11px var(--mono); font-weight: 500; padding: 7px 10px; letter-spacing: .08em; }
+    .live-pill.offline { background: var(--subtle); color: var(--ink); }
+    .view-count { position: absolute; top: 18px; right: 18px; color: var(--ink); font: 12px var(--mono); background: rgba(12,13,16,.75); padding: 7px 10px; }
+    .view-count b { color: var(--coral); }
+    .stream-title { position: absolute; bottom: 18px; left: 18px; font-size: 14px; font-weight: 500; }
+    .stream-status { position: absolute; bottom: 18px; right: 18px; color: var(--muted); font: 11px var(--mono); }
+    .stream-data { position: absolute; right: 18px; bottom: 54px; width: min(290px, 43%); border: 1px solid rgba(255,255,255,.14); background: rgba(10,10,11,.82); backdrop-filter: blur(8px); }
+    .stream-data-head { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid rgba(255,255,255,.12); }
+    .stream-data-stat { padding: 8px 9px; border-right: 1px solid rgba(255,255,255,.1); }
+    .stream-data-stat:last-child { border-right: 0; }
+    .stream-data-stat label { display: block; color: var(--muted); font: 8px var(--mono); margin-bottom: 4px; }
+    .stream-data-stat b { font: 12px var(--mono); color: var(--ink); }
+    .stream-data-stat b.accent { color: var(--coral); }
+    .event-feed { max-height: 82px; overflow: hidden; padding: 6px 9px; }
+    .event-line { color: var(--muted); font: 9px var(--mono); padding: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .event-line b { color: var(--coral); font-weight: 400; }
+    .controls { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-top: 0; padding: 14px 16px; background: var(--panel); gap: 12px; }
+    .primary { border: 0; padding: 12px 19px; color: #13160e; background: var(--lime); font-weight: 700; cursor: pointer; transition: transform .2s, background .2s; }
+    .primary:hover { transform: translateY(-2px); background: #e7ff89; }
+    .primary:disabled { background: var(--subtle); color: var(--muted); cursor: not-allowed; transform: none; }
+    .control-note { color: var(--muted); font: 11px var(--mono); text-align: right; }
+    .control-note strong { color: var(--ink); font-weight: 400; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-top: 0; }
+    .metric { padding: 16px; border-right: 1px solid var(--line); }
+    .metric:last-child { border-right: 0; }
+    .metric label { display: block; color: var(--muted); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .metric strong { display: block; font-size: 22px; font-weight: 500; letter-spacing: -.06em; }
+    .metric small { color: var(--subtle); font: 10px var(--mono); }
+    .panel { border: 1px solid var(--line); background: var(--panel); }
+    .panel + .panel { margin-top: 14px; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .panel-head h2 { font-size: 13px; letter-spacing: -.02em; margin: 0; font-weight: 600; }
+    .panel-head span { color: var(--muted); font: 10px var(--mono); }
+    .chat { height: 334px; overflow: auto; padding: 12px 16px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+    .message { display: grid; grid-template-columns: 80px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(41,45,54,.55); font-size: 12px; animation: rise .3s ease both; }
+    .message:last-child { border-bottom: 0; }
+    .message .user { color: var(--cyan); font: 10px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .message .msg { color: #d6d7da; line-height: 1.35; }
+    .message.system { grid-template-columns: 80px 1fr; color: var(--muted); }
+    .message.system .user { color: var(--lime); }
+    .question-box { padding: 14px 16px 16px; border-top: 1px solid var(--line); background: var(--panel-hi); }
+    .question-label { color: var(--coral); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 7px; }
+    .question { font-size: 13px; margin-bottom: 11px; line-height: 1.4; }
+    .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .creator-chat { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 10px 16px; border-top: 1px solid var(--line); background: #101011; }
+    .creator-chat input { min-width: 0; border: 1px solid var(--line); background: #0a0a0b; color: var(--ink); padding: 10px; outline: 0; font: 11px var(--mono); }
+    .creator-chat input:focus { border-color: var(--coral); }
+    .creator-chat button { border: 1px solid var(--coral); background: transparent; color: var(--coral); padding: 8px 11px; cursor: pointer; font: 10px var(--mono); }
+    .creator-chat button:hover { background: var(--coral); color: #10090a; transform: translateY(-1px); }
+    .shoutout { padding: 12px 16px; border-top: 1px solid var(--line); }
+    .shoutout-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font: 10px var(--mono); }
+    .answer { background: transparent; border: 1px solid var(--line); color: var(--muted); padding: 9px 10px; cursor: pointer; text-align: left; font-size: 11px; transition: border-color .2s, color .2s, background .2s; }
+    .answer:hover { border-color: var(--cyan); color: var(--ink); background: rgba(123,231,220,.06); }
+    .answer:disabled { opacity: .45; cursor: default; }
+    .upgrade-list { padding: 5px 16px 15px; }
+    .upgrade { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .upgrade:last-child { border-bottom: 0; }
+    .upgrade h3 { margin: 0 0 4px; font-size: 12px; font-weight: 500; }
+    .upgrade p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+    .buy { align-self: center; border: 1px solid var(--line); background: transparent; color: var(--gold); font: 10px var(--mono); padding: 8px 9px; cursor: pointer; min-width: 66px; }
+    .buy:hover { border-color: var(--gold); background: rgba(241,201,111,.07); }
+    .buy:disabled { opacity: .35; cursor: default; }
+    .level { color: var(--lime); font: 10px var(--mono); white-space: nowrap; }
+    .log { padding: 12px 16px; max-height: 172px; overflow: auto; }
+    .log-line { color: var(--muted); font: 10px var(--mono); padding: 4px 0; }
+    .log-line b { color: var(--gold); font-weight: 400; }
+    .tip { color: var(--subtle); font: 10px var(--mono); line-height: 1.5; padding: 13px 16px 15px; border-top: 1px solid var(--line); }
+    .sound { border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; padding: 7px 10px; font: 10px var(--mono); }
+    .sound.active { color: var(--lime); border-color: var(--lime); }
+    .auth-screen { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(8,9,11,.94); backdrop-filter: blur(14px); }
+    .auth-card { width: min(440px, 100%); border: 1px solid var(--line); background: var(--panel); padding: 28px; box-shadow: 0 24px 80px rgba(0,0,0,.45); }
+    .auth-card h2 { margin: 8px 0 8px; font-size: 28px; letter-spacing: -.06em; }
+    .auth-copy { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 20px; }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 15px; }
+    .tab { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 10px; cursor: pointer; font: 11px var(--mono); }
+    .tab.active { border-color: var(--lime); color: var(--lime); background: rgba(215,241,113,.06); }
+    .field { display: grid; gap: 6px; margin: 11px 0; }
+    .field label { color: var(--muted); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+    .field input, .field select { width: 100%; border: 1px solid var(--line); outline: 0; background: #0e1013; color: var(--ink); padding: 12px; font: 12px var(--mono); }
+    .field input:focus, .field select:focus { border-color: var(--cyan); }
+    .auth-submit { width: 100%; margin-top: 8px; }
+    .auth-error { min-height: 16px; color: var(--coral); font: 10px var(--mono); margin-top: 10px; }
+    .account { display: flex; align-items: center; gap: 10px; }
+    .account-name { color: var(--cyan); font: 11px var(--mono); }
+    .text-button { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 7px 9px; cursor: pointer; font: 10px var(--mono); }
+    .text-button:hover { color: var(--ink); border-color: var(--ink); }
+    .hidden { display: none !important; }
+    .stream-select { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 7px 9px; font: 10px var(--mono); max-width: 190px; }
+    .controls-left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .mod-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 16px; }
+    .mod-action { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 10px 8px; cursor: pointer; font-size: 11px; }
+    .mod-action:hover { border-color: var(--coral); color: var(--ink); }
+    .mod-action:disabled { opacity: .35; cursor: default; }
+    .lore { color: var(--muted); font-size: 11px; line-height: 1.55; padding: 14px 16px; }
+    .save-state { color: var(--muted); font: 10px var(--mono); }
+    .needs-panel { margin-top: 14px; }
+    .need-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 14px 16px 10px; }
+    .need label { display: block; color: var(--muted); font: 9px var(--mono); letter-spacing: .08em; margin-bottom: 7px; }
+    .need b { display: block; margin-top: 5px; font: 11px var(--mono); color: var(--ink); }
+    .need-bar { height: 6px; background: #292d36; overflow: hidden; }
+    .need-bar i { display: block; height: 100%; width: 100%; background: var(--lime); transition: width .3s, background .3s; }
+    .need-bar i.warn { background: var(--gold); }
+    .need-bar i.low { background: var(--coral); }
+    .life-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 16px 14px; }
+    .life-actions .mod-action { font: 10px var(--mono); }
+    .cooldown { color: var(--gold) !important; }
+    .admin-screen { position: fixed; inset: 0; z-index: 30; padding: 30px; overflow: auto; background: rgba(8,9,11,.96); backdrop-filter: blur(14px); }
+    .admin-card { width: min(860px, 100%); margin: 4vh auto; border: 1px solid var(--line); background: var(--panel); }
+    .admin-card > .auth-copy { padding: 0 20px; }
+    .admin-list { padding: 8px 20px 20px; }
+    .admin-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font: 11px var(--mono); }
+    .admin-row:last-child { border-bottom: 0; }
+    .admin-row b { color: var(--cyan); font-weight: 400; }
+    .admin-row span { color: var(--muted); }
+    .admin-row button { border: 1px solid var(--line); background: transparent; color: var(--gold); padding: 7px 9px; cursor: pointer; font: 10px var(--mono); }
+    .admin-row button:hover { border-color: var(--gold); }
+    .mod-action, .text-button, .sound, .buy, .answer, .tab, .primary { transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease; }
+    .mod-action:hover, .text-button:hover, .sound:hover, .buy:hover, .answer:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,51,68,.1); }
+    .stream-content { animation: stageIn .55s cubic-bezier(.2,.8,.2,1) both; }
+    .stream-content.chat-mode h2 { animation: titleFloat 4s ease-in-out infinite; }
+    .game-screen { animation: screenIn .7s cubic-bezier(.2,.8,.2,1) both; }
+    .alert-overlay.show { animation: alertPulse .45s cubic-bezier(.2,.8,.2,1) both; }
+    .need-bar i { transition: width .5s cubic-bezier(.2,.8,.2,1), background .3s; }
+    @keyframes stageIn { from { opacity: 0; transform: scale(.985) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes screenIn { from { opacity: 0; transform: perspective(500px) rotateX(8deg) scale(.96); } to { opacity: 1; transform: perspective(500px) rotateX(0) scale(1); } }
+    @keyframes titleFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes alertPulse { 0% { box-shadow: 0 0 0 rgba(255,51,68,0); } 50% { box-shadow: 0 0 42px rgba(255,51,68,.4); } 100% { box-shadow: 0 0 24px rgba(255,51,68,.22); } }
+    @media (max-width: 620px) { .account-name { display: none; } .stream-select { max-width: 145px; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+    .live .tiny-dot { animation: pulse 1.2s infinite; }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .chat { height: 260px; } }
+    @media (max-width: 620px) { .app { padding: 17px 14px 30px; } .wallet { gap: 10px; } .wallet-item:nth-child(2) { display: none; } h1 { font-size: 42px; } .stream-frame { min-height: 240px; } .metrics { grid-template-columns: 1fr 1fr; } .metric:nth-child(2) { border-right: 0; } .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); } .controls { align-items: flex-start; flex-direction: column; } .control-note { text-align: left; } .need-grid { grid-template-columns: 1fr 1fr; } .admin-row { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="auth-screen" id="authScreen">
+    <form class="auth-card" id="authForm">
+      <div class="brand"><div class="brand-mark">SL</div><div><strong>StreamerLife</strong><span>// creator sim 0.2</span></div></div>
+      <h2 id="authTitle">Enter the studio.</h2>
+      <p class="auth-copy">Every creator starts with a room, a name, and zero guarantees. Create a local account to save your channel and keep your progress between sessions.</p>
+      <div class="auth-tabs"><button class="tab active" type="button" data-auth-mode="login">LOG IN</button><button class="tab" type="button" data-auth-mode="register">REGISTER</button></div>
+      <div class="field"><label for="authUsername">Username</label><input id="authUsername" autocomplete="username" maxlength="18" placeholder="your_channel_name" /></div>
+      <div class="field"><label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" minlength="4" maxlength="40" placeholder="4+ characters" required /></div>
+      <button class="primary auth-submit" type="submit" id="authSubmit">LOG IN TO CHANNEL</button>
+      <div class="auth-error" id="authError"></div>
+      <div class="tip">Local demo account: your credentials and progress stay in this browser. Keep usernames clean so the chat stays welcoming.</div>
+    </form>
+  </div>
+  <section class="admin-screen hidden" id="adminScreen">
+    <div class="admin-card">
+      <div class="panel-head"><h2>Admin console</h2><button class="text-button" id="adminLogout">LOG OUT</button></div>
+      <p class="auth-copy">Account recovery tools for the StreamerLife local demo. Actions apply immediately to browser storage.</p>
+      <div class="admin-list" id="adminList"></div>
+    </div>
+  </section>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">SL</div><div><strong>StreamerLife</strong><span>// creator sim 0.1</span></div></div>
+      <div class="wallet"><span class="save-state" id="saveState">not saved</span><button class="sound" id="soundBtn">SOUND: OFF</button><div class="wallet-item">$ <b id="cash">12.40</b></div><div class="wallet-item"><span class="tiny-dot"></span> <b id="totalViewers">0</b> total views</div><div class="account"><span class="account-name" id="accountName">guest</span><button class="text-button" id="saveBtn">SAVE</button><button class="text-button" id="logoutBtn">LOG OUT</button></div></div>
+    </header>
+    <div class="layout">
+      <section class="stage">
+        <div class="eyebrow">Broadcast control / room 01</div>
+        <h1>Make something worth staying for.</h1>
+        <p class="lead">A slow-burn streamer simulator. Your first audience is tiny, your setup is held together by hope, and every good answer compounds.</p>
+        <div class="stream-frame" id="streamFrame">
+          <div class="stream-grid"></div><div class="stream-content chat-mode" id="streamContent"><h2>Ask me anything!</h2><p>just chatting // the room is open</p></div>
+          <div class="live-pill offline" id="livePill"><span class="tiny-dot"></span><span id="liveText">OFFLINE</span></div>
+          <div class="view-count">watching now <b id="liveViewers">0</b></div>
+          <div class="art-caption">signal / patience / signal</div>
+          <div class="alert-overlay" id="alertOverlay"><b id="alertType">FOLLOW</b><span id="alertText">someone joined the room</span></div>
+          <div class="stream-data"><div class="stream-data-head"><div class="stream-data-stat"><label>VIEWERS</label><b id="frameViewers" class="accent">0</b></div><div class="stream-data-stat"><label>FOLLOWERS</label><b id="frameFollowers">0</b></div><div class="stream-data-stat"><label>DONATIONS</label><b id="frameDonations">$0</b></div><div class="stream-data-stat"><label>CHAT</label><b id="frameChat">0</b></div></div><div class="event-feed" id="eventFeed"><div class="event-line"><b>SYSTEM</b> // broadcast telemetry ready</div></div></div>
+          <div class="stream-title" id="streamTitle">quiet hours // finding the format</div>
+          <div class="stream-status" id="streamStatus">ready when you are</div>
+        </div>
+        <div class="controls"><div class="controls-left"><button class="primary" id="streamBtn" title="Start or end a broadcast. Streaming drains energy, hunger, hydration, and sleep.">START STREAM</button><select class="stream-select" id="gameSelect" aria-label="Game to stream" title="Choose what appears inside your stream frame."><option value="Just Chatting">JUST CHATTING</option><option value="PAC-MAN">PAC-MAN // arcade night</option><option value="Starbound 98">STARBOUND 98 // late lobby</option><option value="Garden.exe">GARDEN.EXE // cozy run</option><option value="Rooftop Racer">ROOFTOP RACER // no brakes</option></select></div><div class="control-note"><strong id="streamClock">00:00</strong> / NO LIMIT&nbsp;&nbsp; <span id="streamHint">need energy to go live</span></div></div>
+        <div class="needs-panel panel"><div class="panel-head"><h2>Creator condition</h2><span id="conditionText">ready for the day</span></div><div class="need-grid"><div class="need"><label>ENERGY</label><div class="need-bar"><i id="energyBar"></i></div><b id="energyValue">100%</b></div><div class="need"><label>HUNGER</label><div class="need-bar"><i id="hungerBar"></i></div><b id="hungerValue">100%</b></div><div class="need"><label>HYDRATION</label><div class="need-bar"><i id="thirstBar"></i></div><b id="thirstValue">100%</b></div><div class="need"><label>SLEEP</label><div class="need-bar"><i id="sleepBar"></i></div><b id="sleepValue">100%</b></div></div><div class="life-actions"><button class="mod-action" id="eatBtn" title="Eat a meal: -$2, hunger +38, energy +8.">EAT // $2</button><button class="mod-action" id="drinkBtn" title="Drink water: -$1, hydration +48, energy +3.">DRINK // $1</button><button class="mod-action" id="sleepBtn" title="Sleep until morning: sleep 100%, energy +70, hunger -12, hydration -15.">SLEEP // RESTORE</button></div></div>
+        <div class="metrics">
+          <div class="metric"><label>Stream no.</label><strong id="streamCount">01</strong><small>the early days</small></div>
+          <div class="metric"><label>Peak viewers</label><strong id="peakViewers">0</strong><small>this broadcast</small></div>
+          <div class="metric"><label>Retention</label><strong id="retention">--</strong><small>chat is the signal</small></div>
+          <div class="metric"><label>Followers</label><strong id="followers">0</strong><small><span id="reputation">1</span> reputation</small></div>
+        </div>
+      </section>
+      <aside>
+        <section class="panel">
+          <div class="panel-head"><h2>Live chat</h2><span id="chatMood">waiting room</span></div>
+          <div class="chat" id="chat"></div>
+          <div class="question-box"><div class="question-label">Tagged question</div><div class="question" id="question">A tagged question will appear here.</div><div class="answers" id="answers"><button class="answer" disabled>waiting for a tagged viewer...</button></div></div>
+          <form class="creator-chat" id="creatorChat"><input id="creatorMessage" list="viewerNames" maxlength="120" autocomplete="off" placeholder="Talk to chat... use @ to mention someone" /><datalist id="viewerNames"></datalist><button type="submit">SEND</button></form>
+          <div class="shoutout"><div class="shoutout-row"><span id="shoutoutText">No recent alerts to shout out.</span><button class="text-button" id="shoutoutBtn" disabled>SHOUTOUT</button></div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Moderation desk</h2><span id="modStatus">solo mod</span></div>
+          <div class="mod-actions"><button class="mod-action" id="hireModBtn">HIRE MOD // $35</button><button class="mod-action" id="banBtn" disabled>BAN LAST USER</button></div>
+          <div class="tip">Mods auto-filter rude and ad spam. You can still make the call yourself.</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Studio upgrades</h2><span id="upgradeHint">cash only</span></div>
+          <div class="upgrade-list" id="upgrades"></div>
+          <div class="tip">Tip: good answers improve retention. Retention turns small rooms into repeat viewers. Repeat viewers turn into momentum.</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Broadcast log</h2><span>local memory</span></div>
+          <div class="log" id="log"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Creator tools</h2><span>make the room yours</span></div>
+          <div class="lore">Mention a viewer to pull them into the moment. Read the room, thank supporters, and keep the conversation moving. Your words shape the next wave of chat.</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Channel lore</h2><span>field notes</span></div>
+          <div class="lore" id="lore">The platform used to be a forgotten loading screen. The first streamers found a way to make the waiting feel like a place. Your room is small, but somebody is always deciding whether to stay.</div>
+        </section>
+      </aside>
+    </div>
+  </main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const initial = { cash: 12.4, streams: 0, totalViewers: 0, followers: 0, subscriptions: 0, donations: 0, chatMessages: 0, reputation: 1, retention: 0, mods: 0, banned: [], followedUsers: [], game: 'Just Chatting', energy: 100, hunger: 100, thirst: 100, sleep: 100, upgrades: { mic: 0, cam: 0, decor: 0, schedule: 0, lighting: 0, overlays: 0, alerts: 0 } };
+  let state = structuredClone(initial), currentUser = '', authMode = 'login', adminSession = false;
+  let live = false, elapsed = 0, timer = null, cooldownTimer = null, viewers = 0, peak = 0, answered = false, activeQuestion = null, lastUser = '', cooldown = 0, eventLog = [], viewerNames = [], lastAlert = null, audio = false, audioCtx;
+  const badWords = ['n-word', 'slur', 'racist', 'sexist', 'fuck', 'shit', 'bitch', 'cunt', 'dick', 'asshole', 'kys'];
+  const questions = [
+    { q: 'what are you actually playing?', a: [['a weird little indie game', 4], ['whatever chat wants', 2], ['I am building a world', 3], ['I have no idea yet', 1]] },
+    { q: 'how do you stay motivated with 3 viewers?', a: [['I show up anyway', 4], ['we make the room count', 3], ['snacks. many snacks.', 2], ['I chase the numbers', 1]] },
+    { q: 'is this your full-time job?', a: [['not yet, but it is real', 4], ['my cat is my manager', 3], ['one stream at a time', 3], ['I am just here for ads', 1]] },
+    { q: 'why are you playing an old game?', a: [['old games still have stories', 4], ['the pixels feel honest', 3], ['chat dared me to', 2], ['because new games cost money', 1]] },
+    { q: 'can you explain the setup?', a: [['simple tools, good energy', 4], ['it is held together by tape', 2], ['the setup is the content', 3], ['do not look behind the monitor', 1]] },
+    { q: 'what should we call the community?', a: [['the night shift', 4], ['tiny internet club', 3], ['the regulars', 3], ['people who forgot to sleep', 2]] },
+    { q: 'what happens when chat is rude?', a: [['we keep it kind and move on', 4], ['mods handle it', 3], ['I read it for the plot', 1], ['I argue back', 0]] }
+  ];
+  const viewerQuestionBank = [
+    'why are you playing this game?', 'what made you start streaming?', 'what is your favorite part so far?', 'is this your first time playing?', 'what should I call you?',
+    'where did your username come from?', 'what time do you usually go live?', 'are you reading chat right now?', 'what are you drinking?', 'what is your setup like?',
+    'what microphone do you use?', 'are you playing with friends later?', 'what game should you try next?', 'do you prefer old games or new games?', 'what is your comfort game?',
+    'what is the goal for today?', 'are you trying to beat the level?', 'how long is this game?', 'did you plan that move?', 'was that lucky?',
+    'why did you choose that character?', 'what is your favorite level?', 'do you speedrun this?', 'can you explain that strategy?', 'what did I just miss?',
+    'is the music from the game?', 'what do you think of the graphics?', 'does chat choose the next game?', 'what was your first console?', 'what game made you love games?',
+    'do you play off stream?', 'how do you stay motivated?', 'what do you do after streaming?', 'do you have a streaming schedule?', 'what is your biggest goal?',
+    'what would you upgrade first?', 'how did you get your first viewer?', 'are you nervous when you go live?', 'what makes a good stream?', 'how do you handle quiet chat?',
+    'can I recommend a game?', 'can you play this song?', 'will you do a community night?', 'do you have a discord?', 'can we get a channel name?',
+    'what is the story behind the channel?', 'why is the room so dark?', 'what is that sound in the background?', 'how do you choose your titles?', 'do you read every message?',
+    'what is your favorite snack?', 'are you team keyboard or controller?', 'what is your best gaming memory?', 'what game do you secretly dislike?', 'what is the hardest game you played?',
+    'what is your funniest stream moment?', 'what keeps you coming back?', 'can chat help with this puzzle?', 'what happens if you lose?', 'will you celebrate a milestone?'
+  ];
+  const creatorPhraseBank = [
+    { match: ['shut', 'rage', 'bait'], replies: ['LMAO', 'LOOOL', 'W creator moment', 'chat is crying'] },
+    { match: ['thank', 'love', 'appreciate'], replies: ['W streamer', 'we love you too', 'wholesome', '<3'] },
+    { match: ['hello', 'hi', 'welcome'], replies: ['yo yo', 'welcome in', 'hey chat', 'good to see you'] },
+    { match: ['sorry', 'my bad'], replies: ['all good', 'character development', 'we move', 'honest streamer'] },
+    { match: ['focus', 'lock in', 'serious'], replies: ['LOCK IN', 'eyes on the screen', 'we believe', 'no pressure'] },
+    { match: ['scared', 'fear', 'horror'], replies: ['do not turn around', 'chat protect them', 'that noise was real', 'nope nope nope'] },
+    { match: ['win', 'easy', 'w'], replies: ['W', 'clean', 'we take those', 'clip it'] },
+    { match: ['lost', 'lose', 'l'], replies: ['pain', 'unlucky', 'reset angle', 'we go again'] },
+    { match: ['hungry', 'food', 'eat'], replies: ['food arc', 'feed the streamer', 'snack break soon', 'chat approves'] },
+    { match: ['sleep', 'tired', 'bed'], replies: ['rest arc', 'sleep is content', 'do not fall asleep', 'night shift'] },
+    { match: ['music', 'song', 'playlist'], replies: ['music check', 'this track is a vibe', 'DJ chat is working', 'bass boost'] },
+    { match: ['game', 'play', 'level'], replies: ['gameplay incoming', 'let them cook', 'big gaming', 'we are gaming'] },
+    { match: ['quiet', 'slow', 'lurking'], replies: ['quiet chat is still chat', 'lurk honored', 'cozy hours', 'we are chilling'] },
+    { match: ['goal', 'milestone', 'followers'], replies: ['we can do it', 'road to the next one', 'manifesting', 'tiny steps'] },
+    { match: ['mods', 'moderator', 'ban'], replies: ['mods are awake', 'bonk the spam', 'order restored', 'thank you mods'] },
+    { match: ['cool', 'nice', 'good'], replies: ['W', 'appreciate you', 'that means a lot', 'chat is kind today'] },
+    { match: ['bad', 'hate', 'terrible'], replies: ['honest review', 'we can improve', 'no flame wars', 'feedback arc'] },
+    { match: ['coffee', 'drink', 'water'], replies: ['hydration check', 'drink water chat', 'caffeine loading', 'responsible streamer'] },
+    { match: ['clip', 'record', 'highlight'], replies: ['clip that', 'editor chat assemble', 'that was a moment', 'save the VOD'] },
+    { match: ['bye', 'goodnight', 'leave'], replies: ['thanks for hanging out', 'see you next stream', 'goodnight night shift', 'take care'] },
+    { match: ['morning', 'afternoon'], replies: ['good morning chat', 'day shift unlocked', 'coffee first', 'hello sunshine'] },
+    { match: ['night', 'midnight'], replies: ['night shift online', 'the hours are fake', 'sleep is optional', 'moon stream'] },
+    { match: ['controller', 'keyboard'], replies: ['input debate', 'controller diff', 'keyboard gang', 'both are valid'] },
+    { match: ['mouse', 'aim'], replies: ['aim trainer arc', 'mouse is moving', 'precision mode', 'hand diff'] },
+    { match: ['camera', 'webcam'], replies: ['camera check', 'face reveal energy', 'angle is locked', 'wave to chat'] },
+    { match: ['microphone', 'mic', 'audio'], replies: ['audio check passed', 'mic sounds clean', 'no underwater streamer', 'sound crew'] },
+    { match: ['internet', 'wifi', 'lag'], replies: ['router boss fight', 'lag is the final boss', 'buffering arc', 'we can survive'] },
+    { match: ['loading', 'wait'], replies: ['loading screen lore', 'patience chat', 'the suspense', 'it is thinking'] },
+    { match: ['boss', 'enemy'], replies: ['boss music', 'do not panic', 'learn the pattern', 'chat coaching'] },
+    { match: ['puzzle', 'solve'], replies: ['big brain time', 'chat think', 'pieces are connecting', 'we have a theory'] },
+    { match: ['speedrun', 'fast'], replies: ['speedrun arc', 'timer starts now', 'zoom zoom', 'world record pace'] },
+    { match: ['slow', 'careful'], replies: ['methodical gaming', 'no rush', 'slow is smooth', 'we respect the process'] },
+    { match: ['story', 'lore'], replies: ['lore drop', 'the plot thickens', 'story chat assemble', 'I am listening'] },
+    { match: ['character', 'npc'], replies: ['NPC behavior', 'character arc', 'that dialogue was wild', 'voice acting when'] },
+    { match: ['pixel', 'graphics'], replies: ['pixel perfect', 'art direction W', 'retro beauty', 'visuals are cooking'] },
+    { match: ['scam', 'spam'], replies: ['mods deploy', 'spam detected', 'bonk incoming', 'not today'] },
+    { match: ['follow', 'follower'], replies: ['road to the next follower', 'welcome everyone', 'numbers go up', 'community growing'] },
+    { match: ['subscribe', 'sub'], replies: ['sub goal energy', 'thank you supporter', 'emote unlocked', 'big support'] },
+    { match: ['donate', 'donation', 'tip'], replies: ['thank you so much', 'support appreciated', 'tip jar glowing', 'that is incredibly kind'] },
+    { match: ['shoutout', 'shout out'], replies: ['shoutout time', 'spotlight on', 'welcome to the stage', 'everyone say hi'] },
+    { match: ['community', 'family'], replies: ['community moment', 'this room is special', 'night shift strong', 'we built this together'] },
+    { match: ['discord', 'server'], replies: ['server tour soon', 'discord energy', 'community hub', 'link lore'] },
+    { match: ['schedule', 'tomorrow'], replies: ['mark the calendar', 'same time next time', 'schedule arc', 'we will be here'] },
+    { match: ['title', 'thumbnail'], replies: ['branding chat', 'title workshop', 'thumbnail theory', 'clickworthy maybe'] },
+    { match: ['money', 'cash', 'ads'], replies: ['ad break economy', 'the grind continues', 'tiny business owner', 'reinvesting soon'] },
+    { match: ['upgrade', 'setup'], replies: ['studio upgrade arc', 'gear goals', 'one cable at a time', 'production value'] },
+    { match: ['lamp', 'lighting'], replies: ['lighting check', 'softbox season', 'cinematic glow', 'red room hours'] },
+    { match: ['desk', 'chair'], replies: ['desk tour when', 'ergonomics chat', 'chair diff', 'command center'] },
+    { match: ['snack', 'chips'], replies: ['snack reveal', 'crunch audio', 'chat hungry now', 'food cam'] },
+    { match: ['pizza', 'burger'], replies: ['pizza meta', 'delivery arc', 'chat orders one too', 'fuel acquired'] },
+    { match: ['weather', 'rain'], replies: ['rain stream vibes', 'weather channel unlocked', 'cozy outside', 'storm soundtrack'] },
+    { match: ['music', 'silent'], replies: ['soundtrack incoming', 'quiet moment', 'ambient hours', 'DJ chat choose wisely'] },
+    { match: ['joke', 'funny'], replies: ['comedy arc', 'chat laughed', 'standup streamer', 'that was actually good'] },
+    { match: ['meme', 'emote'], replies: ['meme review', 'emote spam approved', 'chat culture', 'that one is going in the VOD'] },
+    { match: ['poll', 'vote'], replies: ['democracy time', 'chat decides', 'poll is live', 'majority rules'] },
+    { match: ['challenge', 'dare'], replies: ['challenge accepted', 'why would you say that', 'content secured', 'chat is dangerous'] },
+    { match: ['clutch', 'close'], replies: ['clutch mode', 'heart rate rising', 'that was too close', 'cinema'] },
+    { match: ['lucky', 'luck'], replies: ['luck is a skill', 'RNG blessed', 'the dice smiled', 'we take the miracle'] },
+    { match: ['unlucky', 'unfortunate'], replies: ['RNG hates us', 'pain compilation', 'reset the vibes', 'we go again'] },
+    { match: ['practice', 'training'], replies: ['training arc', 'skills loading', 'reps matter', 'improvement stream'] },
+    { match: ['new', 'first time'], replies: ['welcome to the experiment', 'new viewer detected', 'glad you found us', 'first stream lore'] },
+    { match: ['old', 'classic'], replies: ['classic never misses', 'history lesson', 'retro hours', 'old but gold'] },
+    { match: ['favorite', 'best'], replies: ['favorite debate', 'top tier opinion', 'chat rankings', 'that is hard to answer'] },
+    { match: ['worst', 'least'], replies: ['controversial take', 'we can discuss', 'chat divided', 'respect the honesty'] },
+    { match: ['real', 'true'], replies: ['real', 'facts', 'no lies detected', 'chat understands'] },
+    { match: ['maybe', 'think'], replies: ['thinking streamer', 'let us workshop it', 'theory mode', 'interesting angle'] },
+    { match: ['help', 'hint'], replies: ['chat guide activated', 'hint incoming', 'team effort', 'we got you'] },
+    { match: ['fail', 'failed'], replies: ['failure is content', 'character building', 'that did not happen', 'run it back'] },
+    { match: ['perfect', 'flawless'], replies: ['perfect run', 'no notes', 'clean execution', 'clip worthy'] },
+    { match: ['break', 'pause'], replies: ['break time', 'stretch chat', 'intermission energy', 'we will hold the room'] }
+  ];
+  const names = ['luna_loop','pixelmoth','cableknit','orbiting_ivy','moss.wav','quietriot','blue_screen','oldhead_88','snackdealer','bot_204'];
+  const commentBank = [
+    'just found this stream', 'the lighting is kind of nice', 'hello from the night shift', 'this feels cozy', 'wait, what is happening', 'I like the energy here', 'first time here', 'lurking while I work', 'the audio is crisp now', 'chat is moving',
+    'that was clean', 'no way you did that', 'huge play', 'okay I am invested', 'this is actually fun', 'respect the grind', 'you got this', 'let him cook', 'that was lucky', 'we take those',
+    'L old game unc', 'pac-man still goes hard', 'the ghosts are camping', 'classic choice', 'my childhood is loading', 'why is the maze so stressful', 'speedrun when', 'that sound effect though', 'arcade night!', 'you missed the dot',
+    'this game is cursed', 'the pixels are immaculate', 'I remember this level', 'new game who dis', 'cozy game energy', 'that boss is rude', 'read the tutorial', 'the strategy is forming', 'big brain route', 'I blinked and missed it',
+    'what are you drinking?', 'where is the setup from?', 'can you play my song?', 'how long have you streamed?', 'what time do you go live?', 'do you have a discord?', 'what is your favorite game?', 'are you reading chat?', 'can I get a shoutout?', 'what is the goal today?',
+    'the camera angle is good', 'your mic sounds better', 'new follower here', 'I brought two friends', 'recommend this channel', 'sending this to my group chat', 'this deserves more viewers', 'the room is growing', 'we found the hidden gem', 'bookmarking this',
+    'you are doing great', 'keep going', 'small stream big heart', 'good answer', 'that was wholesome', 'nice recovery', 'we are proud of you', 'the community is nice', 'this is a safe room', 'I needed this today',
+    'L take', 'bro what', 'that was not it', 'respectfully no', 'you sold', 'chat is disappointed', 'uninstall?', 'I cannot believe that play', 'this is painful', 'I am leaving a dislike',
+    'buy followers at cheap dot site', 'free viewers click my name', 'you won a prize click link', 'crypto giveaway in bio', 'check my channel', 'follow for follow', 'ads ads ads', 'sponsor segment when', 'I have a business opportunity', 'definitely not a bot',
+    'beep boop', 'the algorithm sent me', 'I am three raccoons in a coat', 'what if the ghosts are right', 'keyboard diff', 'my wifi is watching', 'this chat has lore', 'who gave the bot a mic', 'plot twist incoming', 'the moon approves'
+  ];
+  const upgradeData = [
+    { id: 'mic', name: 'Second-hand mic', desc: '+1 retention per stream. Less underwater energy.', base: 18, max: 3 },
+    { id: 'cam', name: 'Used webcam', desc: '+1 peak viewer in every broadcast.', base: 28, max: 3 },
+    { id: 'decor', name: 'One good lamp', desc: '+2 reputation per strong answer.', base: 35, max: 2 },
+    { id: 'schedule', name: 'Consistent schedule', desc: 'Ad revenue +15% per level.', base: 45, max: 3 },
+    { id: 'lighting', name: 'Softbox lamp', desc: '+1 answer quality when you play a game.', base: 55, max: 2 },
+    { id: 'overlays', name: 'Stream overlays', desc: 'New viewers arrive 10% more often.', base: 70, max: 3 },
+    { id: 'alerts', name: 'Alert package', desc: 'Small tips appear in the chat after good answers.', base: 90, max: 2 }
+  ];
+  function cloneInitial() { return JSON.parse(JSON.stringify(initial)); }
+  function accountKey() { return 'streamerLife:' + currentUser; }
+  function accounts() { return JSON.parse(localStorage.getItem('streamerAccounts') || '{}'); }
+  function normalize(saved) { const next = cloneInitial(); if (saved) Object.assign(next, saved); next.upgrades = Object.assign(next.upgrades, saved && saved.upgrades); return next; }
+  function save() { if (!currentUser) return; localStorage.setItem(accountKey(), JSON.stringify(state)); localStorage.setItem('streamerLastUser', currentUser); $('saveState').textContent = 'saved just now'; }
+  function money(value) { return '$' + value.toFixed(2); }
+  function earlyPhase() { return state.streams < 15; }
+  function cleanName(name) { const normalized = name.toLowerCase().replace(/[._-]+/g, ' '); return name.length >= 3 && !badWords.some(word => normalized.includes(word) || name.toLowerCase().includes(word)); }
+  function escapeText(text) { return String(text).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char])); }
+  function addLog(text) { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = text; $('log').prepend(line); while ($('log').children.length > 8) $('log').lastChild.remove(); }
+  function addEvent(label, text) { eventLog.unshift({ label, text }); eventLog = eventLog.slice(0, 5); renderEventFeed(); }
+  function renderEventFeed() { if (!$('eventFeed')) return; $('eventFeed').innerHTML = eventLog.map(event => '<div class="event-line"><b>' + escapeText(event.label) + '</b> // ' + escapeText(event.text) + '</div>').join(''); }
+  function renderStreamContent() { const game = state.game || $('gameSelect').value; if (game === 'Just Chatting') { $('streamContent').className = 'stream-content chat-mode'; $('streamContent').innerHTML = '<h2>Ask me anything!</h2><p>just chatting // the room is open</p>'; return; } $('streamContent').className = 'stream-content'; $('streamContent').innerHTML = '<div class="game-screen"><strong>' + escapeText(game) + '</strong><span>GAMEPLAY FEED // LIVE</span></div>'; }
+  function addChat(user, text, system = false) { const row = document.createElement('div'); row.className = 'message' + (system ? ' system' : ''); row.innerHTML = '<span class="user">' + escapeText(user) + '</span><span class="msg">' + escapeText(text) + '</span>'; $('chat').append(row); $('chat').scrollTop = $('chat').scrollHeight; if (!system) state.chatMessages = (state.chatMessages || 0) + 1; }
+  function renderNeed(id, value) { const bar = $(id + 'Bar'); const amount = Math.max(0, Math.min(100, Math.round(value))); bar.style.width = amount + '%'; bar.className = amount < 25 ? 'low' : amount < 55 ? 'warn' : ''; $(id + 'Value').textContent = amount + '%'; }
+  function render() {
+    $('cash').textContent = state.cash.toFixed(2); $('streamCount').textContent = String(state.streams + 1).padStart(2, '0'); $('totalViewers').textContent = state.totalViewers.toLocaleString(); $('reputation').textContent = state.reputation; renderStreamContent();
+    $('peakViewers').textContent = peak; $('retention').textContent = state.retention ? state.retention + '%' : '--'; $('liveViewers').textContent = viewers; $('accountName').textContent = currentUser || 'guest'; $('followers').textContent = state.followers || 0; $('frameViewers').textContent = viewers; $('frameFollowers').textContent = state.followers || 0; $('frameDonations').textContent = money(state.donations || 0); $('frameChat').textContent = state.chatMessages || 0; renderEventFeed();
+    renderNeed('energy', state.energy); renderNeed('hunger', state.hunger); renderNeed('thirst', state.thirst); renderNeed('sleep', state.sleep);
+    const blocked = cooldown > 0 ? 'COOLDOWN ' + cooldown + 'S' : state.energy < 20 ? 'TOO TIRED' : 'START STREAM'; $('streamBtn').textContent = live ? 'END STREAM' : blocked; $('streamBtn').disabled = !currentUser || (!live && (cooldown > 0 || state.energy < 20)); $('streamBtn').classList.toggle('cooldown', !live && cooldown > 0); $('upgradeHint').textContent = state.cash < 18 ? 'save your ads' : 'ready to invest'; $('conditionText').textContent = state.energy < 20 ? 'you need rest before streaming' : state.hunger < 25 || state.thirst < 25 ? 'basic needs are getting low' : live ? 'on air // needs drain slowly' : cooldown ? 'take a breath between shows' : 'ready for the day';
+    $('streamHint').textContent = live ? 'each viewer has a 10% chat roll / sec' : cooldown ? 'your room needs a reset' : 'need energy to go live';
+    $('modStatus').textContent = state.mods ? state.mods + ' hired mod' + (state.mods > 1 ? 's' : '') : 'solo mod'; $('hireModBtn').textContent = state.mods >= 3 ? 'MOD TEAM // FULL' : 'HIRE MOD // ' + money(35 + state.mods * 45); $('hireModBtn').disabled = state.mods >= 3 || state.cash < 35 + state.mods * 45 || live; $('banBtn').disabled = !lastUser || state.banned.includes(lastUser) || !live;
+    $('shoutoutBtn').disabled = !lastAlert || !live; $('shoutoutText').textContent = lastAlert ? 'Shout out ' + lastAlert.user + '?' : 'No recent alerts to shout out.'; $('viewerNames').innerHTML = viewerNames.map(name => '<option value="@' + escapeText(name) + '"></option>').join(''); renderUpgrades();
+  }
+  function renderUpgrades() {
+    $('upgrades').innerHTML = upgradeData.map(item => { const level = state.upgrades[item.id] || 0; const cost = item.base * (level + 1); const maxed = level >= item.max; return '<div class="upgrade"><div><h3>' + item.name + ' <span class="level">LV ' + level + '/' + item.max + '</span></h3><p>' + item.desc + '</p></div><button class="buy" data-upgrade="' + item.id + '" ' + (maxed || state.cash < cost || live ? 'disabled' : '') + '>' + (maxed ? 'MAX' : money(cost)) + '</button></div>'; }).join('');
+    document.querySelectorAll('[data-upgrade]').forEach(btn => btn.addEventListener('click', () => buy(btn.dataset.upgrade)));
+  }
+  function buy(id) { const item = upgradeData.find(x => x.id === id); const level = state.upgrades[id] || 0; const cost = item.base * (level + 1); if (state.cash < cost || level >= item.max || live) return; state.cash -= cost; state.upgrades[id] = level + 1; addLog('<b>upgrade installed</b> // ' + item.name); addChat('SYSTEM', item.name + ' is now part of the setup.', true); blip(440); save(); render(); }
+  function showTaggedQuestion(user, text) { if (!live || !text.toLowerCase().includes('@' + currentUser.toLowerCase())) return; const prompt = viewerQuestionBank[Math.floor(Math.random() * viewerQuestionBank.length)]; const gameAnswers = state.game === 'PAC-MAN' ? ['because the ghosts still scare me', 'chat picked it', 'it was on sale', 'I lost a bet'] : ['because this game has a story', 'chat wanted this one', 'I am testing the format', 'I just clicked play']; activeQuestion = { q: user + ' asks: ' + prompt, a: gameAnswers.map((answer, index) => [answer, 4 - index]) }; answered = false; $('question').textContent = activeQuestion.q; $('answers').innerHTML = activeQuestion.a.map((answer, i) => '<button class="answer" data-answer="' + i + '">' + escapeText(answer[0]) + '</button>').join(''); document.querySelectorAll('[data-answer]').forEach(btn => btn.addEventListener('click', () => answer(Number(btn.dataset.answer)))); addEvent('QUESTION', user + ' tagged you'); }
+  function answer(index) { if (!live || answered || !activeQuestion) return; answered = true; const data = activeQuestion; const quality = Math.min(4, data.a[index][1] + (state.upgrades.lighting && state.game !== 'Just Chatting' ? 1 : 0)); const bonus = quality + (state.upgrades.mic || 0); state.retention = Math.min(99, Math.max(10, 42 + bonus * 8 + (state.upgrades.cam || 0) * 2)); state.reputation = Math.max(1, state.reputation + quality - 1 + (quality === 4 ? (state.upgrades.decor || 0) * 2 : 0)); $('chatMood').textContent = quality >= 4 ? 'room is recommending you' : quality <= 1 ? 'room got colder' : 'good signal'; addChat('you', data.a[index][0]); addChat('SYSTEM', quality >= 4 ? 'Great answer. A viewer shared the stream.' : quality <= 1 ? 'That answer landed badly. Reputation drops slowly.' : 'Answer logged. Keep the room moving.', true); if (quality >= 4 && state.upgrades.alerts) addChat('tip_bot', '+$0.25 // that answer was worth staying for'); $('answers').querySelectorAll('button').forEach(btn => btn.disabled = true); blip(quality >= 4 ? 660 : 420); save(); render(); }
+  function makeComment() { const user = viewerNames[Math.floor(Math.random() * viewerNames.length)] || names[Math.floor(Math.random() * names.length)]; if (state.banned.includes(user)) return; const gameComments = state.game === 'PAC-MAN' ? ['the ghosts are camping', 'you missed the dot', 'pac-man still goes hard'] : state.game === 'Starbound 98' ? ['this lobby is chaos', 'your loadout is wild', 'late lobby gang'] : state.game === 'Garden.exe' ? ['cozy game energy', 'that garden is cute', 'water the pixel flowers'] : state.game === 'Rooftop Racer' ? ['no brakes!', 'that turn was illegal', 'speedrun when'] : []; let pool = commentBank.concat(gameComments); const asksQuestion = Math.random() < .18; const text = asksQuestion ? '@' + currentUser + ' why are you playing this game?' : pool[Math.floor(Math.random() * pool.length)]; const isSpam = /click|cheap|giveaway|follow for follow|business opportunity/.test(text); if (isSpam && state.mods) { addChat('MOD_' + state.mods, 'removed ad spam from chat', true); return; } lastUser = user; addChat(user, text); if (asksQuestion) showTaggedQuestion(user, text); render(); }
+  function showAlert(type, user, detail) { lastAlert = { type, user }; $('alertType').textContent = type; $('alertText').textContent = user + ' ' + detail; $('alertOverlay').classList.remove('show'); requestAnimationFrame(() => $('alertOverlay').classList.add('show')); setTimeout(() => $('alertOverlay').classList.remove('show'), 4200); blip(type === 'DONATION' ? 760 : type === 'SUB' ? 620 : 500); render(); }
+  function announceFollow(user) { state.followers = (state.followers || 0) + 1; state.followedUsers = (state.followedUsers || []).concat(user); addEvent('FOLLOW', user + ' followed the channel'); addChat('SYSTEM', user + ' just followed!', true); showAlert('FOLLOW', user, 'followed the channel'); }
+  function announceDonation(user) { state.donations = (state.donations || 0) + .25; addEvent('DONATION', user + ' sent $0.25'); addChat('SYSTEM', user + ' donated $0.25!', true); showAlert('DONATION', user, 'sent $0.25'); }
+  function announceSubscription(user) { state.subscriptions = (state.subscriptions || 0) + 1; addEvent('SUB', user + ' subscribed for month one'); addChat('SYSTEM', user + ' subscribed!', true); showAlert('SUB', user, 'subscribed for month one'); }
+  function shoutout() { if (!live || !lastAlert) return; addChat('you', 'Shoutout to @' + lastAlert.user + ' for the ' + lastAlert.type.toLowerCase() + '!'); state.reputation += 1; addEvent('SHOUTOUT', lastAlert.user + ' got a creator shoutout'); addChat('SYSTEM', 'The room liked that. Reputation +1.', true); blip(880); save(); render(); }
+  function reactToCreatorMessage(text) { const lower = text.toLowerCase(); const target = text.match(/@([a-z0-9_.-]+)/i); if (target) { const found = viewerNames.find(name => name.toLowerCase() === target[1].toLowerCase()); if (found) addChat(found, lower.includes('shut') || lower.includes('rage') ? 'LMAO okay okay, I hear you' : 'AYO I got called out'); } const phrase = creatorPhraseBank.find(item => item.match.some(word => lower.includes(word))); const reactions = phrase ? phrase.replies : ['true', 'real', 'say it louder', 'chat agrees']; reactions.slice(0, Math.min(viewers, 4)).forEach((reaction, index) => setTimeout(() => addChat(viewerNames[index] || names[index], reaction), 120 + index * 180)); }
+  function sendCreatorMessage(event) { event.preventDefault(); if (!live) return; const input = $('creatorMessage'); const text = input.value.trim(); if (!text) return; addChat('you', text); reactToCreatorMessage(text); input.value = ''; save(); render(); }
+  function start() { if (live) return end(); if (cooldown || state.energy < 20) return; live = true; elapsed = 0; state.game = $('gameSelect').value; viewers = earlyPhase() ? Math.floor(Math.random() * 5) : Math.min(4 + Math.floor(state.reputation / 10), Math.max(4, Math.floor(4 + state.reputation / 4 + Math.random() * 10))); viewerNames = names.slice(0, viewers); peak = viewers; answered = false; activeQuestion = null; lastAlert = null; $('question').textContent = 'A tagged question will appear here.'; $('answers').innerHTML = '<button class="answer" disabled>waiting for @' + escapeText(currentUser) + '...</button>'; $('livePill').classList.remove('offline'); $('liveText').textContent = 'LIVE'; $('streamFrame').classList.add('live'); $('streamStatus').textContent = 'broadcasting // be present'; $('chatMood').textContent = earlyPhase() ? 'tiny room, real people' : 'momentum is online'; addEvent('LIVE', 'broadcast started'); addChat('SYSTEM', earlyPhase() ? 'You are live. Four viewers would be a crowd.' : 'You are live. Momentum is a real thing.', true); addChat('SYSTEM', 'category // ' + state.game, true); render(); timer = setInterval(tick, 1000); blip(330); }
+  function tick() { elapsed++; const drift = Math.floor(Math.random() * 3) - 1; if (earlyPhase()) viewers = Math.max(0, Math.min(4, viewers + drift)); else viewers = Math.max(0, viewers + drift + ((state.upgrades.cam || 0) && Math.random() > .86 ? 1 : 0)); state.energy = Math.max(0, state.energy - 0.55); state.hunger = Math.max(0, state.hunger - 0.18); state.thirst = Math.max(0, state.thirst - 0.28); state.sleep = Math.max(0, state.sleep - 0.12); peak = Math.max(peak, viewers); for (let viewer = 0; viewer < viewers; viewer++) { if (Math.random() < 0.1) makeComment(); if (Math.random() < 0.05) { const follower = names[Math.floor(Math.random() * names.length)] + '_' + (state.followers + 1); if (!(state.followedUsers || []).includes(follower)) announceFollow(follower); } if (Math.random() < 0.01) announceDonation(names[Math.floor(Math.random() * names.length)]); if (Math.random() < 0.005) announceSubscription(names[Math.floor(Math.random() * names.length)]); } if (state.energy <= 0 || state.hunger <= 0 || state.thirst <= 0) end(); $('streamClock').textContent = String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0'); save(); render(); }
+  function end() { if (!live) return; clearInterval(timer); live = false; viewers = 0; cooldown = 10; clearInterval(cooldownTimer); cooldownTimer = setInterval(() => { cooldown--; render(); if (cooldown <= 0) clearInterval(cooldownTimer); }, 1000); const adBase = Math.max(0.65, elapsed / 55) + Math.random() * .45; const adPay = adBase * (1 + (state.upgrades.schedule || 0) * .15); const answerBonus = answered ? (state.retention / 100) * 1.4 : 0; const earned = adPay + answerBonus; state.cash += earned; state.streams++; state.totalViewers += Math.max(peak, 0); state.reputation += answered ? 1 : 0; $('livePill').classList.add('offline'); $('liveText').textContent = 'OFFLINE'; $('streamFrame').classList.remove('live'); $('streamStatus').textContent = 'stream archived'; $('streamClock').textContent = '00:00'; $('question').textContent = 'A tagged question will appear here.'; $('answers').innerHTML = '<button class="answer" disabled>waiting for a tagged viewer...</button>'; $('chatMood').textContent = 'broadcast archived'; addEvent('OFFLINE', 'all viewers left the room'); addChat('SYSTEM', 'Stream ended. The archive is yours.', true); addLog('<b>+' + money(earned) + '</b> ad payout // stream #' + state.streams + ' // ' + state.game); save(); render(); blip(220); }
+  function eat() { if (state.cash < 2) return; state.cash -= 2; state.hunger = Math.min(100, state.hunger + 38); state.energy = Math.min(100, state.energy + 8); addLog('<b>-$2.00</b> // ate a meal'); save(); render(); }
+  function drink() { if (state.cash < 1) return; state.cash -= 1; state.thirst = Math.min(100, state.thirst + 48); state.energy = Math.min(100, state.energy + 3); addLog('<b>-$1.00</b> // hydration break'); save(); render(); }
+  function sleep() { if (live) return; state.sleep = 100; state.energy = Math.min(100, state.energy + 70); state.hunger = Math.max(0, state.hunger - 12); state.thirst = Math.max(0, state.thirst - 15); addLog('<b>restored</b> // slept until morning'); save(); render(); }
+  function hireMod() { const cost = 35 + state.mods * 45; if (state.mods >= 3 || state.cash < cost || live) return; state.cash -= cost; state.mods++; addLog('<b>mod hired</b> // trust the night shift'); addChat('SYSTEM', 'A new moderator joined your desk.', true); save(); render(); }
+  function banLast() { if (!lastUser || !live || state.banned.includes(lastUser)) return; state.banned.push(lastUser); addChat('SYSTEM', lastUser + ' was banned from the channel.', true); addLog('<b>user banned</b> // ' + lastUser); lastUser = ''; save(); render(); }
+  function blip(freq) { if (!audio) return; audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.frequency.value = freq; osc.type = 'sine'; gain.gain.setValueAtTime(.035, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + .18); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + .18); }
+  function renderAdmin() { const store = accounts(); const banned = JSON.parse(localStorage.getItem('streamerBannedAccounts') || '[]'); const users = Object.keys(store); $('adminList').innerHTML = users.length ? users.map(username => { const saved = normalize(JSON.parse(localStorage.getItem('streamerLife:' + username) || 'null')); const isBanned = banned.includes(username); return '<div class="admin-row"><b>' + escapeText(username) + '</b><span>' + money(saved.cash) + ' / ' + saved.streams + ' streams</span><button data-admin-money="' + escapeText(username) + '">+$100</button><button data-admin-action="' + (isBanned ? 'unban' : 'ban') + '" data-admin-user="' + escapeText(username) + '">' + (isBanned ? 'UNBAN' : 'BAN') + '</button><button data-admin-recover="' + escapeText(username) + '">RECOVER</button></div>'; }).join('') : '<div class="tip">No registered channels yet.</div>'; document.querySelectorAll('[data-admin-money]').forEach(btn => btn.addEventListener('click', () => adminMoney(btn.dataset.adminMoney))); document.querySelectorAll('[data-admin-recover]').forEach(btn => btn.addEventListener('click', () => adminRecover(btn.dataset.adminRecover))); document.querySelectorAll('[data-admin-action]').forEach(btn => btn.addEventListener('click', () => adminBan(btn.dataset.adminUser, btn.dataset.adminAction === 'unban'))); }
+  function enterAdmin() { adminSession = true; $('authScreen').classList.add('hidden'); $('adminScreen').classList.remove('hidden'); renderAdmin(); }
+  function adminMoney(username) { const saved = normalize(JSON.parse(localStorage.getItem('streamerLife:' + username) || 'null')); saved.cash += 100; localStorage.setItem('streamerLife:' + username, JSON.stringify(saved)); renderAdmin(); }
+  function adminRecover(username) { localStorage.setItem('streamerLife:' + username, JSON.stringify(cloneInitial())); renderAdmin(); }
+  function adminBan(username, unban) { let banned = JSON.parse(localStorage.getItem('streamerBannedAccounts') || '[]'); banned = unban ? banned.filter(item => item !== username) : [...new Set(banned.concat(username))]; localStorage.setItem('streamerBannedAccounts', JSON.stringify(banned)); renderAdmin(); }
+  function enterSession(username) { const banned = JSON.parse(localStorage.getItem('streamerBannedAccounts') || '[]'); if (banned.includes(username)) return showAuthError('This channel is unavailable. Contact an administrator.'); currentUser = username; state = normalize(JSON.parse(localStorage.getItem(accountKey()) || 'null')); $('authScreen').classList.add('hidden'); $('chat').innerHTML = ''; $('log').innerHTML = ''; addChat('SYSTEM', 'Your channel is yours. The room is waiting.', true); addChat('SYSTEM', 'Ads are enabled. The grind starts now.', true); addLog('<b>channel loaded</b> // welcome back, ' + escapeText(currentUser)); render(); }
+  function showAuthError(message) { $('authError').textContent = message; }
+  function handleAuth(event) { event.preventDefault(); const username = $('authUsername').value.trim(); const password = $('authPassword').value; const store = accounts(); if (authMode === 'login' && !username && password === 'admin123') return enterAdmin(); if (!cleanName(username)) return showAuthError('Choose a clean username with at least 3 characters.'); if (authMode === 'register') { if (store[username]) return showAuthError('That channel name is already taken.'); store[username] = { password: password }; localStorage.setItem('streamerAccounts', JSON.stringify(store)); state = cloneInitial(); currentUser = username; save(); enterSession(username); } else { if (!store[username] || store[username].password !== password) return showAuthError('Channel name or password did not match.'); enterSession(username); } }
+  document.querySelectorAll('[data-auth-mode]').forEach(tab => tab.addEventListener('click', () => { authMode = tab.dataset.authMode; document.querySelectorAll('[data-auth-mode]').forEach(item => item.classList.toggle('active', item === tab)); $('authTitle').textContent = authMode === 'register' ? 'Build your channel.' : 'Enter the studio.'; $('authSubmit').textContent = authMode === 'register' ? 'CREATE CHANNEL' : 'LOG IN TO CHANNEL'; $('authError').textContent = ''; }));
+  $('authForm').addEventListener('submit', handleAuth); $('streamBtn').addEventListener('click', start); $('creatorChat').addEventListener('submit', sendCreatorMessage); $('shoutoutBtn').addEventListener('click', shoutout); $('hireModBtn').addEventListener('click', hireMod); $('banBtn').addEventListener('click', banLast); $('eatBtn').addEventListener('click', eat); $('drinkBtn').addEventListener('click', drink); $('sleepBtn').addEventListener('click', sleep); $('adminLogout').addEventListener('click', () => { adminSession = false; $('adminScreen').classList.add('hidden'); $('authScreen').classList.remove('hidden'); }); $('saveBtn').addEventListener('click', save); $('logoutBtn').addEventListener('click', () => { if (live) end(); currentUser = ''; $('authScreen').classList.remove('hidden'); }); $('gameSelect').addEventListener('change', () => { state.game = $('gameSelect').value; render(); save(); }); $('soundBtn').addEventListener('click', () => { audio = !audio; $('soundBtn').textContent = audio ? 'SOUND: ON' : 'SOUND: OFF'; $('soundBtn').classList.toggle('active', audio); if (audio) blip(520); });
+  render();
+})();
+</script>
+</body>
+</html>
